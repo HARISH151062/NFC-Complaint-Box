@@ -1,0 +1,190 @@
+CREATE TABLE complaints (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    title VARCHAR(255) NOT NULL,
+    description TEXT NOT NULL,
+    category VARCHAR(100),
+    file_attachment VARCHAR(255),
+    status ENUM('Pending', 'Resolved', 'In Progress') DEFAULT 'Pending',
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+
+
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NFC Complaint Box</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="container">
+        <h1>Welcome to NFC Complaint Box</h1>
+        <form action="submit_complaint.php" method="POST" enctype="multipart/form-data">
+            <label for="title">Complaint Title:</label>
+            <input type="text" id="title" name="title" required>
+
+            <label for="description">Complaint Description:</label>
+            <textarea id="description" name="description" required></textarea>
+
+            <label for="category">Category:</label>
+            <select id="category" name="category" required>
+                <option value="Service">Service</option>
+                <option value="Payment">Payment</option>
+                <option value="Delivery">Delivery</option>
+                <option value="Other">Other</option>
+            </select>
+
+            <label for="file">Attach File (Optional):</label>
+            <input type="file" id="file" name="file">
+
+            <button type="submit">Submit Complaint</button>
+        </form>
+    </div>
+</body>
+</html>
+
+
+
+body {
+    font-family: Arial, sans-serif;
+    background-color: #f4f4f4;
+    color: #333;
+    margin: 0;
+    padding: 0;
+}
+
+.container {
+    width: 50%;
+    margin: 50px auto;
+    padding: 20px;
+    background-color: white;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+}
+
+h1 {
+    text-align: center;
+}
+
+form {
+    display: flex;
+    flex-direction: column;
+}
+
+label {
+    margin: 10px 0 5px;
+}
+
+input, textarea, select {
+    padding: 10px;
+    margin-bottom: 15px;
+    border: 1px solid #ccc;
+    border-radius: 5px;
+}
+
+button {
+    padding: 10px;
+    background-color: #4CAF50;
+    color: white;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+}
+
+button:hover {
+    background-color: #45a049;
+}
+
+
+<?php
+// Database connection (update with your credentials)
+$servername = "localhost";
+$username = "root"; // Your database username
+$password = ""; // Your database password
+$dbname = "nfc_complaints"; // Database name
+
+$conn = new mysqli($servername, $username, $password, $dbname);
+
+// Check connection
+if ($conn->connect_error) {
+    die("Connection failed: " . $conn->connect_error);
+}
+
+// Get data from the form
+$title = $_POST['title'];
+$description = $_POST['description'];
+$category = $_POST['category'];
+
+// Handle file upload (optional)
+$file = $_FILES['file']['name'];
+$file_tmp = $_FILES['file']['tmp_name'];
+$file_path = 'uploads/' . $file;
+
+if (move_uploaded_file($file_tmp, $file_path)) {
+    $file_uploaded = $file_path;
+} else {
+    $file_uploaded = null;
+}
+
+// Insert data into database
+$sql = "INSERT INTO complaints (title, description, category, file_attachment) 
+        VALUES ('$title', '$description', '$category', '$file_uploaded')";
+
+if ($conn->query($sql) === TRUE) {
+    echo "Complaint submitted successfully.";
+} else {
+    echo "Error: " . $sql . "<br>" . $conn->error;
+}
+
+$conn->close();
+?>
+
+
+<?php
+// Database connection
+$servername = "localhost";
+$username = "root"; 
+$password = "";
+$dbname = "nfc_complaints";
+
+$conn = new mysqli($servername, $username, $password, $dbname);
+
+// Check connection
+if ($conn->connect_error) {
+    die("Connection failed: " . $conn->connect_error);
+}
+
+$sql = "SELECT * FROM complaints ORDER BY created_at DESC";
+$result = $conn->query($sql);
+
+echo "<h1>Manage Complaints</h1>";
+
+if ($result->num_rows > 0) {
+    while($row = $result->fetch_assoc()) {
+        echo "<div class='complaint'>";
+        echo "<h3>" . $row['title'] . "</h3>";
+        echo "<p>" . $row['description'] . "</p>";
+        echo "<p>Category: " . $row['category'] . "</p>";
+        if ($row['file_attachment']) {
+            echo "<p><a href='" . $row['file_attachment'] . "' target='_blank'>View Attachment</a></p>";
+        }
+        echo "<p>Status: " . $row['status'] . "</p>";
+        echo "<form action='resolve_complaint.php' method='POST'>";
+        echo "<input type='hidden' name='complaint_id' value='" . $row['id'] . "'>";
+        echo "<select name='status'>
+                <option value='Pending' " . ($row['status'] == 'Pending' ? 'selected' : '') . ">Pending</option>
+                <option value='In Progress' " . ($row['status'] == 'In Progress' ? 'selected' : '') . ">In Progress</option>
+                <option value='Resolved' " . ($row['status'] == 'Resolved' ? 'selected' : '') . ">Resolved</option>
+              </select>";
+        echo "<button type='submit'>Update Status</button>";
+        echo "</form>";
+        echo "</div><hr>";
+    }
+} else {
+    echo "No complaints found.";
+}
+
+$conn->close();
+?>
